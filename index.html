@@ -84,7 +84,13 @@
   }
   .photo-box .cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .5s ease;}
   .photo-box .cover .icon{width:46px;height:46px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;}
-  .photo-box .cover .label{font-family:'Caveat',cursive;font-size:19px;color:#EDE3FF;}
+  .surprise-btn{
+    font-family:'Caveat',cursive;font-size:19px;color:#EDE3FF;
+    background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);
+    padding:12px 26px;border-radius:24px;cursor:pointer;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  .surprise-btn:active{background:rgba(255,255,255,.22);}
   .photo-box .hold-fill{position:absolute;left:0;bottom:0;height:4px;background:#fff;width:0%;transition:width .05s linear;}
   .photo-box img,.photo-box video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.12);transition:opacity .6s ease, transform .6s cubic-bezier(.34,1.56,.64,1);}
   .photo-box video{background:#000;}
@@ -142,7 +148,7 @@
         <div class="glitter" id="photoGlitter"></div>
         <div class="hold-fill" id="holdFill"></div>
         <div class="cover">
-          <div class="label" id="photoLabel">tap for a surprise</div>
+          <button type="button" class="surprise-btn" id="photoLabel">tap for a surprise</button>
         </div>
         <img id="photoImg" alt="">
         <video id="photoVideo" controls playsinline preload="metadata"></video>
@@ -579,23 +585,13 @@
     transitionToSlide(idx-1);
   });
 
-  photoBox.addEventListener('click', ()=>{
+  const surpriseBtn = document.getElementById('photoLabel');
+
+  surpriseBtn.addEventListener('click', ()=>{
     const s = slides[idx];
     if(photoBox.classList.contains('revealed') || s.holdReveal) return;
     revealCurrentPhoto();
   });
-
-  // explicit touch handling — mobile browsers can swallow the synthetic click
-  // if the page scrolls even slightly during a tap, so handle touch directly too
-  let touchMoved = false;
-  photoBox.addEventListener('touchstart', ()=>{ touchMoved = false; }, {passive:true});
-  photoBox.addEventListener('touchmove', ()=>{ touchMoved = true; }, {passive:true});
-  photoBox.addEventListener('touchend', (e)=>{
-    const s = slides[idx];
-    if(s.holdReveal || touchMoved || photoBox.classList.contains('revealed')) return;
-    e.preventDefault();
-    revealCurrentPhoto();
-  }, {passive:false});
 
   // press-and-hold reveal
   function startHold(){
@@ -624,11 +620,11 @@
       holdFill.style.width='0%';
     }
   }
-  photoBox.addEventListener('mousedown', startHold);
-  photoBox.addEventListener('touchstart', startHold, {passive:true});
-  photoBox.addEventListener('mouseup', cancelHold);
-  photoBox.addEventListener('mouseleave', cancelHold);
-  photoBox.addEventListener('touchend', cancelHold);
+  surpriseBtn.addEventListener('mousedown', startHold);
+  surpriseBtn.addEventListener('touchstart', startHold, {passive:true});
+  surpriseBtn.addEventListener('mouseup', cancelHold);
+  surpriseBtn.addEventListener('mouseleave', cancelHold);
+  surpriseBtn.addEventListener('touchend', cancelHold);
 
   document.getElementById('enterBtn').addEventListener('click', ()=>{
     document.getElementById('landing').classList.add('hide');
