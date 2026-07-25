@@ -278,8 +278,8 @@
     landingScreen.classList.remove('hide');
   }
 
-  // ---- Web3Forms setup: replace with the access key from web3forms.com (free, instant signup) ----
-  const WEB3FORMS_KEY = '980997de-7891-4038-ba80-6529945b235a';
+  // ---- Web3Forms replaced with a Supabase Edge Function ("send-reply") that
+  // proxies to Resend, so the real email API key never touches the browser ----
 
   function scatter(container, count){
     container.innerHTML='';
@@ -778,10 +778,6 @@
       replyStatus.textContent = 'write something first';
       return;
     }
-    if(WEB3FORMS_KEY === 'YOUR_ACCESS_KEY_HERE'){
-      replyStatus.textContent = 'reply sending isn\'t set up yet';
-      return;
-    }
 
     replySendBtn.disabled = true;
     replySendBtn.textContent = 'sending...';
@@ -789,34 +785,30 @@
 
     const s = slides[idx];
 
-    let blob = null;
+    let screenshotBase64 = null;
     try{
       const canvas = await html2canvas(document.getElementById('visualStack'), {backgroundColor: null, scale: 2, useCORS: true});
-      blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      const dataUrl = canvas.toDataURL('image/png');
+      screenshotBase64 = dataUrl.split(',')[1]; // strip the "data:image/png;base64," prefix
     } catch(shotErr){
       console.warn('screenshot capture failed, sending reply without it:', shotErr);
-      blob = null;
+      screenshotBase64 = null;
     }
 
     try{
-      const emailBody =
-        `Slide ${idx + 1}\n\n` +
-        `Paragraph on that slide:\n${s.placeholder}\n\n` +
-        (s.photo ? `(this slide had a photo/video on it — see attached screenshot)\n\n` : '') +
-        `Her reply:\n${message}`;
-
-      const formData = new FormData();
-      formData.append('access_key', WEB3FORMS_KEY);
-      formData.append('name', 'reply from the gift page');
-      formData.append('email', 'noreply@nittyaa.vaultex.me');
-      formData.append('subject', `Reply on slide ${idx + 1}`);
-      formData.append('message', emailBody);
-      formData.append('slide_number', String(idx + 1));
-      if(blob) formData.append('attachment', blob, `slide-${idx + 1}.png`);
-
-      const res = await fetch('https://api.web3forms.com/submit', {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/send-reply`, {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          slideNumber: idx + 1,
+          paragraph: s.placeholder,
+          hasPhoto: !!s.photo,
+          replyMessage: message,
+          screenshotBase64: screenshotBase64
+        })
       });
       const result = await res.json();
 
@@ -828,8 +820,8 @@
         replyStatus.textContent = 'sent 💌';
         setTimeout(()=>{ replyStatus.textContent=''; }, 2500);
       } else {
-        console.warn('Web3Forms error:', result);
-        replyStatus.textContent = result.message ? result.message : 'something went wrong, try again';
+        console.warn('send-reply function error:', result);
+        replyStatus.textContent = 'something went wrong, try again';
         replySendBtn.textContent = 'send reply';
       }
     } catch(err){
