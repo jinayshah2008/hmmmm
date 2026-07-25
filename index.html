@@ -37,6 +37,15 @@
   button.enter{font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:16px;background:var(--rose-deep);color:#FBF2E7;border:none;padding:12px 30px;border-radius:30px;cursor:pointer;box-shadow:0 8px 20px -8px rgba(140,69,80,.6);transition:transform .15s;}
   button.enter:hover{transform:translateY(-1px);}
 
+  .lock-input{
+    width:100%;box-sizing:border-box;font-family:'Literata',serif;font-size:15px;
+    padding:11px 14px;border-radius:14px;border:1px solid #d8c3ab;
+    background:#fff;color:#3a2c22;outline:none;margin-bottom:16px;text-align:center;
+  }
+  .lock-input:focus{border-color:var(--rose-deep);}
+  .lock-error{font-family:'Caveat',cursive;color:#a13b3b;font-size:16px;margin:10px 0 0;min-height:18px;}
+  #lockScreen{display:flex;align-items:center;justify-content:center;min-height:80vh;}
+
   /* ---------- SLIDES ---------- */
   #slides{display:flex;flex-direction:column;align-items:center;gap:20px;}
 
@@ -144,8 +153,20 @@
 <div class="bgstars" id="bgstars"></div>
 <div class="stage">
 
+  <!-- ===== LOCK SCREEN ===== -->
+  <div id="lockScreen">
+    <div class="welcome-note">
+      <p class="eyebrow">hey</p>
+      <h1>this one's<br>just for you</h1>
+      <p class="desc">enter the password to come in.</p>
+      <input type="password" id="lockInput" class="lock-input" placeholder="password" autocomplete="off">
+      <button class="enter" id="lockBtn">unlock</button>
+      <p class="lock-error" id="lockError"></p>
+    </div>
+  </div>
+
   <!-- ===== LANDING ===== -->
-  <div id="landing">
+  <div id="landing" class="hide">
     <div class="welcome-note">
       <p class="eyebrow">hey, come in</p>
       <h1>i made you<br>something small</h1>
@@ -194,7 +215,59 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+  // ---- Supabase setup for the password gate ----
+  const SUPABASE_URL = 'https://aetobmxjkbfipgyukimv.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_lMOMNtFyOeJFNXaHzy71vw_8eSdaBZn';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const lockScreen = document.getElementById('lockScreen');
+  const lockInput = document.getElementById('lockInput');
+  const lockBtn = document.getElementById('lockBtn');
+  const lockError = document.getElementById('lockError');
+  const landingScreen = document.getElementById('landing');
+
+  async function attemptUnlock(){
+    const guess = lockInput.value.trim();
+    if(!guess){
+      lockError.textContent = 'type it in first';
+      return;
+    }
+    lockBtn.disabled = true;
+    lockBtn.textContent = 'checking...';
+    lockError.textContent = '';
+
+    try{
+      const { data, error } = await supabaseClient.rpc('check_site_password', { guess });
+      if(error){
+        lockError.textContent = "couldn't check that, try again";
+      } else if(data === true){
+        sessionStorage.setItem('siteUnlocked', 'yes');
+        lockScreen.classList.add('hide');
+        landingScreen.classList.remove('hide');
+      } else {
+        lockError.textContent = 'not quite, try again';
+      }
+    } catch(err){
+      lockError.textContent = "couldn't check that, try again";
+    }
+
+    lockBtn.disabled = false;
+    lockBtn.textContent = 'unlock';
+  }
+
+  lockBtn.addEventListener('click', attemptUnlock);
+  lockInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter') attemptUnlock();
+  });
+
+  // skip re-asking within the same browser session
+  if(sessionStorage.getItem('siteUnlocked') === 'yes'){
+    lockScreen.classList.add('hide');
+    landingScreen.classList.remove('hide');
+  }
+
   // ---- Web3Forms setup: replace with the access key from web3forms.com (free, instant signup) ----
   const WEB3FORMS_KEY = 'YOUR_ACCESS_KEY_HERE';
 
