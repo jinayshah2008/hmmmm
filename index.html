@@ -789,10 +789,16 @@
 
     const s = slides[idx];
 
+    let blob = null;
     try{
       const canvas = await html2canvas(document.getElementById('visualStack'), {backgroundColor: null, scale: 2, useCORS: true});
-      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+      blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    } catch(shotErr){
+      console.warn('screenshot capture failed, sending reply without it:', shotErr);
+      blob = null;
+    }
 
+    try{
       const emailBody =
         `Slide ${idx + 1}\n\n` +
         `Paragraph on that slide:\n${s.placeholder}\n\n` +
@@ -801,6 +807,8 @@
 
       const formData = new FormData();
       formData.append('access_key', WEB3FORMS_KEY);
+      formData.append('name', 'reply from the gift page');
+      formData.append('email', 'noreply@nittyaa.vaultex.me');
       formData.append('subject', `Reply on slide ${idx + 1}`);
       formData.append('message', emailBody);
       formData.append('slide_number', String(idx + 1));
@@ -820,10 +828,12 @@
         replyStatus.textContent = 'sent 💌';
         setTimeout(()=>{ replyStatus.textContent=''; }, 2500);
       } else {
-        replyStatus.textContent = 'something went wrong, try again';
+        console.warn('Web3Forms error:', result);
+        replyStatus.textContent = result.message ? result.message : 'something went wrong, try again';
         replySendBtn.textContent = 'send reply';
       }
     } catch(err){
+      console.warn('reply send failed:', err);
       replyStatus.textContent = 'something went wrong, try again';
       replySendBtn.textContent = 'send reply';
     }
