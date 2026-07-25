@@ -119,6 +119,25 @@
   button.back-slide:disabled{opacity:.3;cursor:default;}
   .next-wrap{position:relative;width:100%;display:flex;justify-content:center;min-height:52px;align-items:center;}
   .hint{font-family:'Caveat',cursive;color:#C9BCE0;font-size:16px;margin-top:2px;text-align:center;min-height:18px;}
+
+  /* ---------- REPLY BOX ---------- */
+  .reply-box{width:100%;display:flex;flex-direction:column;gap:8px;margin-top:4px;}
+  .reply-box textarea{
+    width:100%;min-height:60px;resize:vertical;border-radius:14px;
+    border:1px solid rgba(245,241,255,.25);background:rgba(255,255,255,.05);
+    color:#F5F1FF;font-family:'Literata',serif;font-size:14.5px;padding:12px 14px;outline:none;
+  }
+  .reply-box textarea::placeholder{color:rgba(245,241,255,.4);font-style:italic;}
+  .reply-box textarea:focus{border-color:rgba(245,241,255,.5);}
+  button.reply-send{
+    align-self:flex-end;font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:14px;
+    background:rgba(255,255,255,.1);color:#F5F1FF;border:1px solid rgba(245,241,255,.3);
+    padding:9px 20px;border-radius:24px;cursor:pointer;transition:background .15s;
+    touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  }
+  button.reply-send:hover{background:rgba(255,255,255,.18);}
+  button.reply-send:disabled{opacity:.5;cursor:default;}
+  .reply-status{font-family:'Caveat',cursive;font-size:15px;color:#C9BCE0;text-align:center;min-height:16px;}
 </style>
 </head>
 <body>
@@ -138,20 +157,22 @@
   <!-- ===== SLIDES ===== -->
   <div id="slides" class="hide">
     <div class="slide-content" id="slideContent">
-      <div class="night-note" id="noteCard">
-        <div class="glitter" id="noteGlitter"></div>
-        <p class="msg" id="noteText" contenteditable="true"></p>
-        <div class="kitten-wrap hide" id="kittenWrap"></div>
-      </div>
-
-      <div class="photo-box hide" id="photoBox">
-        <div class="glitter" id="photoGlitter"></div>
-        <div class="hold-fill" id="holdFill"></div>
-        <div class="cover">
-          <button type="button" class="surprise-btn" id="photoLabel">tap for a surprise</button>
+      <div id="visualStack" style="width:100%;display:flex;flex-direction:column;gap:20px;">
+        <div class="night-note" id="noteCard">
+          <div class="glitter" id="noteGlitter"></div>
+          <p class="msg" id="noteText" contenteditable="true"></p>
+          <div class="kitten-wrap hide" id="kittenWrap"></div>
         </div>
-        <img id="photoImg" alt="">
-        <video id="photoVideo" controls playsinline preload="metadata"></video>
+
+        <div class="photo-box hide" id="photoBox">
+          <div class="glitter" id="photoGlitter"></div>
+          <div class="hold-fill" id="holdFill"></div>
+          <div class="cover">
+            <button type="button" class="surprise-btn" id="photoLabel">tap for a surprise</button>
+          </div>
+          <img id="photoImg" alt="">
+          <video id="photoVideo" controls playsinline preload="metadata"></video>
+        </div>
       </div>
 
       <div class="btn-row">
@@ -161,12 +182,22 @@
         </div>
       </div>
       <p class="hint" id="hint"></p>
+
+      <div class="reply-box">
+        <textarea id="replyText" placeholder="reply to this one..." maxlength="600"></textarea>
+        <button class="reply-send" id="replySendBtn">send reply</button>
+      </div>
+      <p class="reply-status" id="replyStatus"></p>
     </div>
   </div>
 
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+  // ---- Web3Forms setup: replace with the access key from web3forms.com (free, instant signup) ----
+  const WEB3FORMS_KEY = 'YOUR_ACCESS_KEY_HERE';
+
   function scatter(container, count){
     container.innerHTML='';
     for(let i=0;i<count;i++){
@@ -189,7 +220,7 @@
     'https://cdn.pixabay.com/photo/2020/02/28/19/35/cat-4888355_640.png',
     'https://cdn.pixabay.com/photo/2020/07/03/22/05/cat-5367741_640.png',
   ];
-  const kittens = kittenPhotos.map(url => `<img src="${url}" alt="a little kitten" class="kitten-photo">`);
+  const kittens = kittenPhotos.map(url => `<img src="${url}" alt="a little kitten" class="kitten-photo" crossorigin="anonymous">`);
 
   const kittenWrap = document.getElementById('kittenWrap');
   kittenWrap.addEventListener('click', ()=>{
@@ -428,6 +459,9 @@
   const backBtn=document.getElementById('backBtn');
   const hint=document.getElementById('hint');
   const slideContent=document.getElementById('slideContent');
+  const replyText=document.getElementById('replyText');
+  const replySendBtn=document.getElementById('replySendBtn');
+  const replyStatus=document.getElementById('replyStatus');
 
   function photoSlotForSlide(slideIndex){
     return photoSlideIndexes.indexOf(slideIndex);
@@ -533,6 +567,10 @@
     nextBtn.disabled=false;
     nextBtn.style.opacity=1;
     backBtn.disabled = (idx === 0);
+    replyText.value='';
+    replyStatus.textContent='';
+    replySendBtn.disabled=false;
+    replySendBtn.textContent='send reply';
 
     if(s.trickNext){
       hint.textContent = s.endButton ? '' : 'tap next like you mean it';
@@ -636,6 +674,61 @@
       holdFill.style.width='0%';
     }
   }
+
+  replySendBtn.addEventListener('click', async ()=>{
+    const message = replyText.value.trim();
+    if(!message){
+      replyStatus.textContent = 'write something first';
+      return;
+    }
+    if(WEB3FORMS_KEY === 'YOUR_ACCESS_KEY_HERE'){
+      replyStatus.textContent = 'reply sending isn\'t set up yet';
+      return;
+    }
+
+    replySendBtn.disabled = true;
+    replySendBtn.textContent = 'sending...';
+    replyStatus.textContent = '';
+
+    const s = slides[idx];
+
+    try{
+      const canvas = await html2canvas(document.getElementById('visualStack'), {backgroundColor: null, scale: 2, useCORS: true});
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+      const emailBody =
+        `Slide ${idx + 1}\n\n` +
+        `Paragraph on that slide:\n${s.placeholder}\n\n` +
+        (s.photo ? `(this slide had a photo/video on it — see attached screenshot)\n\n` : '') +
+        `Her reply:\n${message}`;
+
+      const formData = new FormData();
+      formData.append('access_key', WEB3FORMS_KEY);
+      formData.append('subject', `Reply on slide ${idx + 1}`);
+      formData.append('message', emailBody);
+      formData.append('slide_number', String(idx + 1));
+      if(blob) formData.append('attachment', blob, `slide-${idx + 1}.png`);
+
+      const res = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await res.json();
+
+      if(result.success){
+        replyStatus.textContent = 'sent 💌';
+        replyText.value = '';
+        replySendBtn.textContent = 'send reply';
+      } else {
+        replyStatus.textContent = 'something went wrong, try again';
+        replySendBtn.textContent = 'send reply';
+      }
+    } catch(err){
+      replyStatus.textContent = 'something went wrong, try again';
+      replySendBtn.textContent = 'send reply';
+    }
+    replySendBtn.disabled = false;
+  });
 
   document.getElementById('enterBtn').addEventListener('click', ()=>{
     document.getElementById('landing').classList.add('hide');
