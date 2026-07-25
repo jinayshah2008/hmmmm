@@ -253,7 +253,6 @@
       if(error){
         lockError.textContent = "couldn't check that, try again";
       } else if(data === true){
-        sessionStorage.setItem('siteUnlocked', 'yes');
         lockScreen.classList.add('hide');
         landingScreen.classList.remove('hide');
       } else {
@@ -271,12 +270,6 @@
   lockInput.addEventListener('keydown', (e)=>{
     if(e.key === 'Enter') attemptUnlock();
   });
-
-  // skip re-asking within the same browser session
-  if(sessionStorage.getItem('siteUnlocked') === 'yes'){
-    lockScreen.classList.add('hide');
-    landingScreen.classList.remove('hide');
-  }
 
   // ---- Web3Forms replaced with a Supabase Edge Function ("send-reply") that
   // proxies to Resend, so the real email API key never touches the browser ----
