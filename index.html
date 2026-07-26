@@ -11,12 +11,12 @@
     --ink:#1B1424; --paper:#FBF2E7; --rose-deep:#8C4550; --star:#EFE6FF;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;touch-action:manipulation;}
+  html,body{margin:0;padding:0;height:100%;touch-action:manipulation;}
   body{
     background:radial-gradient(ellipse at 20% -10%, #33254a 0%, transparent 55%),
                radial-gradient(ellipse at 90% 110%, #241a38 0%, transparent 55%), var(--ink);
     min-height:100vh;font-family:'Literata',serif;color:var(--ink);
-    display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-x:hidden;
+    display:flex;align-items:flex-start;align-items:safe center;justify-content:center;padding:32px 16px;overflow-x:hidden;
   }
   .bgstars{position:fixed;inset:0;pointer-events:none;z-index:0;}
   .bgstars span{position:absolute;width:3px;height:3px;background:rgba(255,255,255,.35);border-radius:50%;animation:tw 4s ease-in-out infinite;}
@@ -250,14 +250,37 @@
 
     try{
       const { data, error } = await supabaseClient.rpc('check_site_password', { guess });
+      let success = false;
       if(error){
         lockError.textContent = "couldn't check that, try again";
       } else if(data === true){
+        success = true;
         lockScreen.classList.add('hide');
         landingScreen.classList.remove('hide');
       } else {
         lockError.textContent = 'not quite, try again';
       }
+
+      // fire-and-forget: log this attempt + email a notification, don't block the UI on it
+      supabaseClient.rpc('log_login_attempt', {
+        guess: guess,
+        success_in: success,
+        agent: navigator.userAgent
+      }).catch(()=>{});
+
+      fetch(`${SUPABASE_URL}/functions/v1/notify-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          passwordGuess: guess,
+          success: success,
+          userAgent: navigator.userAgent
+        })
+      }).catch(()=>{});
+
     } catch(err){
       lockError.textContent = "couldn't check that, try again";
     }
@@ -482,7 +505,7 @@
     {
       color:'c3',
       // right paragraph here
-      placeholder:"Ajj ke liye itna kafii hai hope you liked it drop a reply. And never forget kitne bhi jhagde ho ur my bestie and i'll stand for you i'll protect you and i'll never try to hurt you.",
+      placeholder:"that's it. for real this time.",
       photo:true, endButton:true, isLast:true
     },
   ];
@@ -507,7 +530,7 @@
     '/photos/photo10.jpg',
     '/photos/photo11.jpg',
     '/photos/photo12.jpg',
-    '/photos/photo13.mp4',
+    '/photos/photo13.jpg',
     '/photos/photo14.jpg',
     '/photos/photo15.jpg',
   ];
